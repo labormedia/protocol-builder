@@ -1,9 +1,10 @@
 use serde::{Serialize, Deserialize};
-use bincode::{Encode, Decode};
 pub use protocol_builder::{
     A64,
     handshake_protocol,
     HandshakeProtocol,
+    Encode,
+    Decode,
     STANDARD_CONFIG,
 };
 
@@ -16,6 +17,15 @@ pub struct NonceCommit {
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
 struct NonceReveal {
     nonce: [u8; 32],
+}
+
+handshake_protocol! {
+    protocol ParSigProtocol {
+        handshake PartialSignature {
+            req: NonceReveal,                // Coordinator request: NonceReveal
+            ack: Option<PartialSig>           // Participants response
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug)]
@@ -65,7 +75,7 @@ handshake_protocol! {
             ack: NonceReveal          // Participants response
         },
         handshake PartialSignature {
-            req: NonceReveal,                // Coordinator request: NonceReveal
+            req: ParSigProtocol,                // Coordinator request: NonceReveal
             ack: PartialSig           // Participants response
         },
         handshake AggregateSignature {
@@ -78,13 +88,16 @@ handshake_protocol! {
 // Example usage:
 fn main() {
     // Coordinator initiates a handshake requesting nonce commitments:
-    let handshake = MuSig2Protocol::NonceCommitment {
+    let mut handshake = MuSig2Protocol::NonceCommitment {
         req: Empty::Lexicon,
-        ack: Default::default(), // initially empty
+        ack: None, // initially empty
     };
 
     // Serialize request (empty payload here, but could have content):
     let serialized_request = handshake.serialize_req();
+    
+    println!("Original deserialized request: {handshake:?}");
+    println!("Original serialized request: {serialized_request:?}");
 
     // Participant receives the request, deserializes:
     let mut received_handshake = MuSig2Protocol::deserialize_req("NonceCommitment", &serialized_request);
@@ -100,12 +113,11 @@ fn main() {
     // Participant serializes the response:
     let serialized_ack = received_handshake.serialize_ack();
     
-    println!("Input : {:?}", received_handshake);
-    println!("Serialized ACK : {serialized_ack:?} {:?}", serialized_ack.len());
+    println!("Serialized ACK : {serialized_ack:?}");
 
     // Coordinator deserializes the response:
-    let mut coordinator_handshake = handshake; // original handshake
-    coordinator_handshake.deserialize_ack(&serialized_ack);
+    handshake.deserialize_ack(&serialized_ack);
 
-    println!("Coordinator received: {:?}", coordinator_handshake);
+    println!("Handshake State: {:?}", handshake);
+    println!("Coordinator received: {:?}", handshake.serialize_ack());
 }
