@@ -3,6 +3,7 @@ pub use protocol_builder::{
     A64,
     handshake_protocol,
     HandshakeProtocol,
+    RequestBuilder,
     Encode,
     Decode,
     STANDARD_CONFIG,
@@ -85,6 +86,23 @@ handshake_protocol! {
     }
 }
 
+impl MuSig2Protocol {
+    fn new() -> Self {
+        Self::NonceCommitment {
+            req: Default::default(),
+            ack: None,
+        }
+    }
+    fn init(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
+        let empty = Self::new();
+        let first_handshake = &Self::list_handshakes()[0];
+        Ok(Self::deserialize_req(first_handshake, data))
+    }
+    fn finalize() {
+        
+    }
+}
+
 // Example usage:
 fn main() {
     // Coordinator initiates a handshake requesting nonce commitments:
@@ -98,6 +116,9 @@ fn main() {
     
     println!("Original deserialized request: {handshake:?}");
     println!("Original serialized request: {serialized_request:?}");
+    
+    let reinitialized = MuSig2Protocol::init(&serialized_request).unwrap();
+    println!("Original reinitialized {:?}", reinitialized);
     
     let handshake_variant = MuSig2Protocol::NonceCommitment {
         req: Empty::Alphabet,

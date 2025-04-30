@@ -1,6 +1,11 @@
 mod traits;
 mod macros;
-use traits::BigArray;
+pub use traits::{
+    BigArray,
+    RequestBuilder,
+    HandshakeProtocol,
+    AsyncExecutor,
+};
 use serde::{Serialize, Deserialize};
 pub use bincode::{
     config::{
@@ -9,19 +14,13 @@ pub use bincode::{
         Varint,
         Fixint,
         Limit,
+        NoLimit,
     },
     Encode,
     Decode,
 };
 
 pub use macros::A64;
-
-pub trait HandshakeProtocol {
-    fn serialize_req(&self) -> Vec<u8>;
-    fn deserialize_req(handshake: &str, data: &[u8]) -> Self;
-    fn serialize_ack(&self) -> Vec<u8>;
-    fn deserialize_ack(&mut self, data: &[u8]);
-}
 
 pub const STANDARD_CONFIG: bincode::config::Configuration<LittleEndian, Fixint> = bincode::config::standard()
         .with_little_endian()
@@ -52,12 +51,6 @@ macro_rules! handshake_protocol {
             ),+
         }
         
-        impl Default for $protocol_name {
-            fn default() -> Self {
-                Default::default()
-            }
-        }
-        
         impl $protocol_name {
             fn list_protocol_types() -> Vec<(String, String)> {
                 vec![
@@ -75,19 +68,9 @@ macro_rules! handshake_protocol {
                 ]       
             }
         }
-
-        impl HandshakeProtocol for $protocol_name {
-            // Serialize request message into bytes
-            fn serialize_req(&self) -> Vec<u8> {
-                match self {
-                    $(
-                        $protocol_name::$handshake_name { req, .. } => {
-                            bincode::encode_to_vec(req, STANDARD_CONFIG).unwrap()
-                        }
-                    ),+
-                }
-            }
-
+        
+        impl RequestBuilder for $protocol_name {
+            
             // Deserialize request message from bytes
             fn deserialize_req(handshake: &str, data: &[u8]) -> Self {
                 match handshake {
@@ -101,6 +84,19 @@ macro_rules! handshake_protocol {
                         }
                     ),+
                     _ => panic!("Unknown handshake request"),
+                }
+            }
+        }
+
+        impl HandshakeProtocol for $protocol_name {
+            // Serialize request message into bytes
+            fn serialize_req(&self) -> Vec<u8> {
+                match self {
+                    $(
+                        $protocol_name::$handshake_name { req, .. } => {
+                            bincode::encode_to_vec(req, STANDARD_CONFIG).unwrap()
+                        }
+                    ),+
                 }
             }
 

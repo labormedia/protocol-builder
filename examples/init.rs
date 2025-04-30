@@ -4,6 +4,7 @@ pub use protocol_builder::{
     A64,
     handshake_protocol,
     HandshakeProtocol,
+    RequestBuilder,
     STANDARD_CONFIG,
 };
 
