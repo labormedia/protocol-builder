@@ -36,20 +36,44 @@ macro_rules! handshake_protocol {
             $(
                 handshake $handshake_name:ident {
                     req: $req_ty:ty,
-                    ack: $res_ty:ty
+                    ack: $ack_ty:ty
                 }
             ),+ $(,)?
         }
     ) => {
         
-        #[derive(Debug, Serialize, Encode, Decode, Deserialize)]
+        #[derive(Debug, Serialize, Encode, Decode, Deserialize, Clone)]
         pub enum $protocol_name {
             $(
                 $handshake_name {
                     req: $req_ty,
-                    ack: Option<$res_ty>,
+                    ack: Option<$ack_ty>,
                 }
             ),+
+        }
+        
+        impl Default for $protocol_name {
+            fn default() -> Self {
+                Default::default()
+            }
+        }
+        
+        impl $protocol_name {
+            fn list_protocol_types() -> Vec<(String, String)> {
+                vec![
+                    $(
+                        (stringify!($req_ty).to_string(),
+                        stringify!($ack_ty).to_string())
+                    ),+
+                ]       
+            }
+            fn list_handshakes() -> Vec<String> {
+                vec![
+                    $(
+                        stringify!($handshake_name).to_string()
+                    ),+
+                ]       
+            }
         }
 
         impl HandshakeProtocol for $protocol_name {

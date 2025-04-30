@@ -9,12 +9,12 @@ pub use protocol_builder::{
 };
 
 // Example message types (must implement Serialize/Deserialize + Default)
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 pub struct NonceCommit {
     pub nonce_hash: [u8; 32],
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 struct NonceReveal {
     nonce: [u8; 32],
 }
@@ -24,11 +24,11 @@ handshake_protocol! {
         handshake PartialSignature {
             req: NonceReveal,                // Coordinator request: NonceReveal
             ack: Option<PartialSig>           // Participants response
-        }
+        },
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
 struct PartialSig {
     #[serde( with = "A64")]
     sig_part: [u8; 64],
@@ -42,7 +42,7 @@ impl Default for PartialSig {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
 struct AggSig {
     #[serde( with = "A64")]
     aggregated_sig: [u8; 64],
@@ -56,7 +56,7 @@ impl Default for AggSig {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 pub enum Empty {
     #[default]
     Alphabet,
@@ -98,9 +98,17 @@ fn main() {
     
     println!("Original deserialized request: {handshake:?}");
     println!("Original serialized request: {serialized_request:?}");
+    
+    let handshake_variant = MuSig2Protocol::NonceCommitment {
+        req: Empty::Alphabet,
+        ack: None, // initially empty
+    };
+    println!("Handshake variant : {:?} {:?}", handshake_variant, handshake_variant.serialize_req());
 
     // Participant receives the request, deserializes:
     let mut received_handshake = MuSig2Protocol::deserialize_req("NonceCommitment", &serialized_request);
+    
+    println!("Initialized Handshake : {:?}", received_handshake);
 
     // Participant generates response:
     received_handshake = MuSig2Protocol::NonceCommitment {
@@ -109,6 +117,15 @@ fn main() {
             nonce_hash: *b"a long nonce hash to place into.",
         }),
     };
+    
+    let aggregate_signature = MuSig2Protocol::AggregateSignature {
+        req: PartialSig::default(),
+        ack: Some(AggSig {
+            aggregated_sig: *b"a long nonce hash to place into, after some rare events show up.",
+        }),        
+    };
+    
+    println!("Serialized Aggregate Signature Acknowledge : {:?}", aggregate_signature.serialize_ack());
 
     // Participant serializes the response:
     let serialized_ack = received_handshake.serialize_ack();
@@ -120,4 +137,7 @@ fn main() {
 
     println!("Handshake State: {:?}", handshake);
     println!("Coordinator received: {:?}", handshake.serialize_ack());
+    
+    println!("List protocol: {:?}", MuSig2Protocol::list_protocol_types());
+    println!("List handhshakes: {:?}", MuSig2Protocol::list_handshakes());
 }

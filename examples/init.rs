@@ -8,17 +8,17 @@ pub use protocol_builder::{
 };
 
 // Example message types (must implement Serialize/Deserialize + Default)
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 pub struct NonceCommit {
     pub nonce_hash: [u8; 32],
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 struct NonceReveal {
     nonce: [u8; 32],
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
 struct PartialSig {
     #[serde( with = "A64")]
     sig_part: [u8; 64],
@@ -32,7 +32,7 @@ impl Default for PartialSig {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
 struct AggSig {
     #[serde( with = "A64")]
     aggregated_sig: [u8; 64],
@@ -46,7 +46,7 @@ impl Default for AggSig {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 pub enum Empty {
     #[default]
     Alphabet,
