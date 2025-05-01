@@ -85,10 +85,10 @@ fn main() {
     };
 
     // Serialize request (empty payload here, but could have content):
-    let serialized_request = handshake.serialize_req();
+    let serialized_request = handshake.req_encode();
 
     // Participant receives the request, deserializes:
-    let mut received_handshake = MuSig2Protocol::deserialize_req("NonceCommitment", &serialized_request);
+    let mut received_handshake = MuSig2Protocol::req_decode("NonceCommitment", &serialized_request);
 
     // Participant generates response:
     received_handshake = MuSig2Protocol::NonceCommitment {
@@ -99,14 +99,14 @@ fn main() {
     };
 
     // Participant serializes the response:
-    let serialized_ack = received_handshake.serialize_ack();
+    let serialized_ack = received_handshake.ack_encode();
     
     println!("Input : {:?}", received_handshake);
     println!("Serialized ACK : {serialized_ack:?} {:?}", serialized_ack.len());
 
     // Coordinator deserializes the response:
     let mut coordinator_handshake = handshake; // original handshake
-    coordinator_handshake.deserialize_ack(&serialized_ack);
+    coordinator_handshake.ack_decode(&serialized_ack);
 
     println!("Coordinator received: {:?}", coordinator_handshake);
 }

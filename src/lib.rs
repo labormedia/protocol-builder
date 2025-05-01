@@ -72,7 +72,7 @@ macro_rules! handshake_protocol {
         impl RequestBuilder for $protocol_name {
             
             // Deserialize request message from bytes
-            fn deserialize_req(handshake: &str, data: &[u8]) -> Self {
+            fn req_decode(handshake: &str, data: &[u8]) -> Self {
                 match handshake {
                     $(
                         stringify!($handshake_name) => {
@@ -90,7 +90,7 @@ macro_rules! handshake_protocol {
 
         impl HandshakeProtocol for $protocol_name {
             // Serialize request message into bytes
-            fn serialize_req(&self) -> Vec<u8> {
+            fn req_encode(&self) -> Vec<u8> {
                 match self {
                     $(
                         $protocol_name::$handshake_name { req, .. } => {
@@ -101,7 +101,7 @@ macro_rules! handshake_protocol {
             }
 
             // Serialize response message into bytes
-            fn serialize_ack(&self) -> Vec<u8> {
+            fn ack_encode(&self) -> Vec<u8> {
                 match self {
                     $(
                         $protocol_name::$handshake_name { ack, .. } => {
@@ -115,7 +115,7 @@ macro_rules! handshake_protocol {
             }
 
             // Deserialize response message from bytes
-            fn deserialize_ack(&mut self, data: &[u8]) {
+            fn ack_decode(&mut self, data: &[u8]) {
                 match self {
                     $(
                         $protocol_name::$handshake_name { ack, .. } => {

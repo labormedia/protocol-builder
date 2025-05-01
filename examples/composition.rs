@@ -96,7 +96,7 @@ impl MuSig2Protocol {
     fn init(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
         let empty = Self::new();
         let first_handshake = &Self::list_handshakes()[0];
-        Ok(Self::deserialize_req(first_handshake, data))
+        Ok(Self::req_decode(first_handshake, data))
     }
     fn finalize() {
         
@@ -112,7 +112,7 @@ fn main() {
     };
 
     // Serialize request (empty payload here, but could have content):
-    let serialized_request = handshake.serialize_req();
+    let serialized_request = handshake.req_encode();
     
     println!("Original deserialized request: {handshake:?}");
     println!("Original serialized request: {serialized_request:?}");
@@ -124,10 +124,10 @@ fn main() {
         req: Empty::Alphabet,
         ack: None, // initially empty
     };
-    println!("Handshake variant : {:?} {:?}", handshake_variant, handshake_variant.serialize_req());
+    println!("Handshake variant : {:?} {:?}", handshake_variant, handshake_variant.req_encode());
 
     // Participant receives the request, deserializes:
-    let mut received_handshake = MuSig2Protocol::deserialize_req("NonceCommitment", &serialized_request);
+    let mut received_handshake = MuSig2Protocol::req_decode("NonceCommitment", &serialized_request);
     
     println!("Initialized Handshake : {:?}", received_handshake);
 
@@ -146,18 +146,18 @@ fn main() {
         }),        
     };
     
-    println!("Serialized Aggregate Signature Acknowledge : {:?}", aggregate_signature.serialize_ack());
+    println!("Serialized Aggregate Signature Acknowledge : {:?}", aggregate_signature.ack_encode());
 
     // Participant serializes the response:
-    let serialized_ack = received_handshake.serialize_ack();
+    let serialized_ack = received_handshake.ack_encode();
     
     println!("Serialized ACK : {serialized_ack:?}");
 
     // Coordinator deserializes the response:
-    handshake.deserialize_ack(&serialized_ack);
+    handshake.ack_decode(&serialized_ack);
 
     println!("Handshake State: {:?}", handshake);
-    println!("Coordinator received: {:?}", handshake.serialize_ack());
+    println!("Coordinator received: {:?}", handshake.ack_encode());
     
     println!("List protocol: {:?}", MuSig2Protocol::list_protocol_types());
     println!("List handhshakes: {:?}", MuSig2Protocol::list_handshakes());

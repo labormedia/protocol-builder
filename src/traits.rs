@@ -9,15 +9,15 @@ pub trait BigArray<'de>: Sized {
 }
 
 pub trait RequestBuilder {
-    fn deserialize_req(handshake: &str, data: &[u8]) -> Self;
+    fn req_decode(handshake: &str, data: &[u8]) -> Self;
 }
 
 pub trait HandshakeProtocol {
-    fn serialize_req(&self) -> Vec<u8>;
-    fn serialize_ack(&self) -> Vec<u8>;
-    fn deserialize_ack(&mut self, data: &[u8]);
+    fn req_encode(&self) -> Vec<u8>;
+    fn ack_encode(&self) -> Vec<u8>;
+    fn ack_decode(&mut self, data: &[u8]);
 }
 
-pub trait AsyncExecutor {
+pub trait AsyncExecutor: HandshakeProtocol {
     fn exec(&mut self) -> Pin<Box<impl Future<Output = Self> + Send>>;
 }
