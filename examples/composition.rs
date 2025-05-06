@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use core::task::Poll;
 pub use protocol_builder::{
     A64,
     handshake_protocol,
@@ -58,6 +59,13 @@ impl Default for AggSig {
 }
 
 #[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
+pub enum HandshakeFinality {
+    Accept,
+    #[default]
+    Reject,
+}
+
+#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
 pub enum Empty {
     #[default]
     Alphabet,
@@ -83,6 +91,10 @@ handshake_protocol! {
             req: PartialSig,                // Verifier request: PartialSig
             ack: AggSig               // Coordinator final aggregated response
         },
+        handshake Finality {
+            req: AggSig,
+            ack: HandshakeFinality
+        }
     }
 }
 
@@ -98,8 +110,11 @@ impl MuSig2Protocol {
         let first_handshake = &Self::list_handshakes()[0];
         Ok(Self::req_decode(first_handshake, data))
     }
-    fn finalize() {
-        
+    fn finalize(&self) -> Poll<&HandshakeFinality> {
+        match self {
+            MuSig2Protocol::Finality { ack: Some(ack), .. } => Poll::from(ack),
+            _ => Poll::Pending,
+        }
     }
 }
 
