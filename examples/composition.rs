@@ -110,10 +110,10 @@ impl MuSig2Protocol {
         let first_handshake = &Self::list_handshakes()[0];
         Ok(Self::req_decode(first_handshake, data))
     }
-    fn finalize(&self) -> Option<Poll<&HandshakeFinality>> {
+    fn finalize(&self) -> Poll<&HandshakeFinality> {
         match self {
-            MuSig2Protocol::Finality { ack: Some(ack), .. } => { Some(Poll::from(ack)) },
-            _ => Some(Poll::Pending),
+            MuSig2Protocol::Finality { ack: Some(ack), .. } => Poll::from(ack),
+            _ => Poll::Pending,
         }
     }
 }
