@@ -32,15 +32,28 @@ pub const STANDARD_CONFIG: bincode::config::Configuration<LittleEndian, Fixint> 
 macro_rules! handshake_protocol {
     (
         protocol $protocol_name:ident {
-            $(
-                handshake $handshake_name:ident {
-                    req: $req_ty:ty,
-                    ack: $ack_ty:ty
-                }
-            ),+ $(,)?
+            $($body:tt)*
         }
     ) => {
+        handshake_protocol!(@protocol $protocol_name, [], $($body)*);
+    };
+    (@protocol $protocol_name:ident, [$($path:ident)*],
+        handshake $handshake_name:ident {
+            req: $req_ty:ty,
+            ack: $ack_ty:ty $(,)?
+        }
+        $($rest:tt)*
+    ) => {
         
+        #[derive(Debug, Serialize, Encode, Decode, Deserialize, Clone)]
+        pub struct $handshake_name {
+            pub req: $req_ty,
+            pub ack: $ack_ty,
+        }
+        
+        handshake_protocol!(@protocol @protocol_name, [$($path)*], $($rest)*);
+    };
+        /*
         #[derive(Debug, Serialize, Encode, Decode, Deserialize, Clone)]
         pub enum $protocol_name {
             $(
@@ -49,6 +62,25 @@ macro_rules! handshake_protocol {
                     ack: Option<$ack_ty>,
                 }
             ),+
+        }
+        */
+    
+    (protocol @protocol_name:ident, [$($path:ident)*],
+        protocol $nested_protocol_name:ident {
+            $($nested_body:tt) , *
+        }
+        $($rest:tt)*
+    ) => {
+        handshake_protocol!(@protocol $nested_protocol_name, [$($path)* $protocol_name], $($nested_body)*);
+        handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
+    };
+        
+    (protocol @protocol_name:ident, [$($path:ident)*],)
+    => {
+        pub enum $protocol_name {
+            $(
+                $path($path),
+            )*
         }
         
         impl $protocol_name {

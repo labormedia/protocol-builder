@@ -26,7 +26,7 @@ handshake_protocol! {
         handshake PartialSignature {
             req: NonceReveal,                // Coordinator request: NonceReveal
             ack: Option<PartialSig>           // Participants response
-        },
+        }
     }
 }
 
@@ -77,23 +77,23 @@ handshake_protocol! {
     protocol MuSig2Protocol {
         handshake NonceCommitment {
             req: Empty,                // Coordinator request: no payload
-            ack: NonceCommit          // Participants response
+            ack: NonceCommit,          // Participants response
         },
         handshake NonceReveal {
             req: NonceCommit,                // Coordinator request: NonceCommit
-            ack: NonceReveal          // Participants response
+            ack: NonceReveal,          // Participants response
         },
         handshake PartialSignature {
             req: ParSigProtocol,                // Coordinator request: NonceReveal
-            ack: PartialSig           // Participants response
+            ack: PartialSig,           // Participants response
         },
         handshake AggregateSignature {
             req: PartialSig,                // Verifier request: PartialSig
-            ack: AggSig               // Coordinator final aggregated response
+            ack: AggSig,               // Coordinator final aggregated response
         },
         handshake Finality {
             req: AggSig,
-            ack: HandshakeFinality
+            ack: HandshakeFinality,
         }
     }
 }
