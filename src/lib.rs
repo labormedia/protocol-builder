@@ -53,21 +53,9 @@ macro_rules! handshake_protocol {
         
         handshake_protocol!(@protocol @protocol_name, [$($path)*], $($rest)*);
     };
-        /*
-        #[derive(Debug, Serialize, Encode, Decode, Deserialize, Clone)]
-        pub enum $protocol_name {
-            $(
-                $handshake_name {
-                    req: $req_ty,
-                    ack: Option<$ack_ty>,
-                }
-            ),+
-        }
-        */
-    
-    (protocol @protocol_name:ident, [$($path:ident)*],
+    (@protocol $protocol_name:ident, [$($path:ident)*],
         protocol $nested_protocol_name:ident {
-            $($nested_body:tt) , *
+            $($nested_body:tt)*
         }
         $($rest:tt)*
     ) => {
@@ -75,7 +63,7 @@ macro_rules! handshake_protocol {
         handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
     };
         
-    (protocol @protocol_name:ident, [$($path:ident)*],)
+    (@protocol $protocol_name:ident, [$($path:ident)*],)
     => {
         pub enum $protocol_name {
             $(

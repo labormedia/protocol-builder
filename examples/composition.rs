@@ -78,19 +78,19 @@ handshake_protocol! {
         handshake NonceCommitment {
             req: Empty,                // Coordinator request: no payload
             ack: NonceCommit,          // Participants response
-        },
+        }
         handshake NonceReveal {
             req: NonceCommit,                // Coordinator request: NonceCommit
             ack: NonceReveal,          // Participants response
-        },
+        }
         handshake PartialSignature {
             req: ParSigProtocol,                // Coordinator request: NonceReveal
             ack: PartialSig,           // Participants response
-        },
+        }
         handshake AggregateSignature {
             req: PartialSig,                // Verifier request: PartialSig
             ack: AggSig,               // Coordinator final aggregated response
-        },
+        }
         handshake Finality {
             req: AggSig,
             ack: HandshakeFinality,
