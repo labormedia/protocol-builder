@@ -14,11 +14,6 @@ pub struct NonceCommit {
     pub nonce_hash: [u8; 32],
 }
 
-#[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug, Default)]
-struct NonceReveal {
-    nonce: [u8; 32],
-}
-
 #[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
 struct PartialSig {
     #[serde( with = "A64")]
@@ -60,19 +55,19 @@ handshake_protocol! {
         handshake NonceCommitment {
             req: Empty,                // Coordinator request: no payload
             ack: NonceCommit          // Participants response
-        },
+        }
         handshake NonceReveal {
             req: NonceCommit,                // Coordinator request: NonceCommit
-            ack: NonceReveal          // Participants response
-        },
+            ack: PartialSig          // Participants response
+        }
         handshake PartialSignature {
-            req: NonceReveal,                // Coordinator request: NonceReveal
+            req: PartialSig,                // Coordinator request: NonceReveal
             ack: PartialSig           // Participants response
-        },
+        }
         handshake AggregateSignature {
             req: PartialSig,                // Verifier request: PartialSig
             ack: AggSig               // Coordinator final aggregated response
-        },
+        }
     }
 }
 
