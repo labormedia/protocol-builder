@@ -67,11 +67,13 @@ handshake_protocol! {
         }
         handshake NonceReveal {
             req: NonceCommit,                // Coordinator request: NonceCommit
-            ack: ParSigProtocol,          // Participants response
+            ack: Empty,          // Participants response
         }
-        handshake PartialSignature {
-            req: ParSigProtocol,                // Coordinator request: NonceReveal
-            ack: PartialSig,           // Participants response
+        protocol ParSigProtocol{ 
+            handshake PartialSignatures {
+                req: Empty,                // Coordinator request: NonceReveal
+                ack: PartialSig,           // Participants response
+            }
         }
         handshake AggregateSignature {
             req: PartialSig,                // Verifier request: PartialSig
@@ -86,10 +88,10 @@ handshake_protocol! {
 
 impl MuSig2Protocol {
     fn new() -> Self {
-        Self::NonceCommitment {
+        Self::NonceCommitment ( NonceCommitment {
             req: Default::default(),
             ack: None,
-        }
+        })
     }
     fn init(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
         let empty = Self::new();
@@ -98,7 +100,7 @@ impl MuSig2Protocol {
     }
     fn finalize(&self) -> Poll<&HandshakeFinality> {
         match self {
-            MuSig2Protocol::Finality { ack: Some(ack), .. } => Poll::from(ack),
+            MuSig2Protocol::Finality ( Finality { ack: Some(ack), .. } ) => Poll::from(ack),
             _ => Poll::Pending,
         }
     }
@@ -107,10 +109,10 @@ impl MuSig2Protocol {
 // Example usage:
 fn main() {
     // Coordinator initiates a handshake requesting nonce commitments:
-    let mut handshake = MuSig2Protocol::NonceCommitment {
+    let mut handshake = MuSig2Protocol::NonceCommitment ( NonceCommitment {
         req: Empty::Lexicon,
         ack: None, // initially empty
-    };
+    });
 
     // Serialize request (empty payload here, but could have content):
     let serialized_request = handshake.req_encode();
@@ -121,10 +123,10 @@ fn main() {
     let reinitialized = MuSig2Protocol::init(&serialized_request).unwrap();
     println!("Original reinitialized {:?}", reinitialized);
     
-    let handshake_variant = MuSig2Protocol::NonceCommitment {
+    let handshake_variant = MuSig2Protocol::NonceCommitment ( NonceCommitment {
         req: Empty::Alphabet,
         ack: None, // initially empty
-    };
+    });
     println!("Handshake variant : {:?} {:?}", handshake_variant, handshake_variant.req_encode());
 
     // Participant receives the request, deserializes:
@@ -133,19 +135,19 @@ fn main() {
     println!("Initialized Handshake : {:?}", received_handshake);
 
     // Participant generates response:
-    received_handshake = MuSig2Protocol::NonceCommitment {
+    received_handshake = MuSig2Protocol::NonceCommitment ( NonceCommitment {
         req: Empty::Alphabet,
         ack: Some(NonceCommit {
             nonce_hash: *b"a long nonce hash to place into.",
         }),
-    };
+    });
     
-    let aggregate_signature = MuSig2Protocol::AggregateSignature {
+    let aggregate_signature = MuSig2Protocol::AggregateSignature ( AggregateSignature {
         req: PartialSig::default(),
         ack: Some(AggSig {
             aggregated_sig: *b"a long nonce hash to place into, after some rare events show up.",
         }),        
-    };
+    });
     
     println!("Serialized Aggregate Signature Acknowledge : {:?}", aggregate_signature.ack_encode());
 
@@ -160,6 +162,6 @@ fn main() {
     println!("Handshake State: {:?}", handshake);
     println!("Coordinator received: {:?}", handshake.ack_encode());
     
-    println!("List protocol: {:?}", MuSig2Protocol::list_protocol_types());
+    //println!("List protocol: {:?}", MuSig2Protocol::list_protocol_types());
     println!("List handhshakes: {:?}", MuSig2Protocol::list_handshakes());
 }

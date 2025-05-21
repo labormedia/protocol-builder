@@ -16,12 +16,12 @@ macro_rules! handshake_protocol {
     (@protocol $protocol_name:ident, [$($path:ident)*],
         handshake $handshake_name:ident {
             req: $req_ty:ty,
-            ack: $ack_ty:ty
+            ack: $ack_ty:ty $(,)?
         }
         $($rest:tt)*
     ) => {
         // Define handshake enum
-        #[derive(Debug, Serialize, Deserialize)]
+        #[derive(Debug, Serialize, Deserialize, Decode, Encode)]
         pub struct $handshake_name {
             pub req: $req_ty,
             pub ack: Option<$ack_ty>,
@@ -44,11 +44,29 @@ macro_rules! handshake_protocol {
 
     // When body is empty, define protocol enum
     (@protocol $protocol_name:ident, [$($path:ident)*],) => {
-        #[derive(Debug, Serialize, Deserialize)]
+        #[derive(Debug, Serialize, Deserialize, Decode)]
         pub enum $protocol_name {
             $(
                 $path($path),
             )*
+        }
+
+        impl $protocol_name {
+            /*fn list_protocol_types() -> Vec<(String, String)> {
+                vec![
+                    $(
+                        (stringify!($req_ty).to_string(),
+                        stringify!($ack_ty).to_string())
+                    ),+
+                ]       
+            }*/
+            fn list_handshakes() -> Vec<String> {
+                vec![
+                    $(
+                        stringify!($path).to_string()
+                    ),+
+                ]       
+            }
         }
 
         impl RequestBuilder for $protocol_name {
