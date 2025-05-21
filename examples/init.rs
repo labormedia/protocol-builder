@@ -1,8 +1,12 @@
 use serde::{Serialize, Deserialize};
 use bincode::{Encode, Decode};
 pub use protocol_builder::{
-    A64,
     handshake_protocol,
+    A64::{
+        self,
+        serialize,
+        deserialize,
+    },
     HandshakeProtocol,
     RequestBuilder,
     STANDARD_CONFIG,
@@ -74,10 +78,10 @@ handshake_protocol! {
 // Example usage:
 fn main() {
     // Coordinator initiates a handshake requesting nonce commitments:
-    let handshake = MuSig2Protocol::NonceCommitment {
+    let handshake = MuSig2Protocol::NonceCommitment( NonceCommitment {
         req: Empty::Lexicon,
         ack: Default::default(), // initially empty
-    };
+    });
 
     // Serialize request (empty payload here, but could have content):
     let serialized_request = handshake.req_encode();
@@ -86,12 +90,12 @@ fn main() {
     let mut received_handshake = MuSig2Protocol::req_decode("NonceCommitment", &serialized_request);
 
     // Participant generates response:
-    received_handshake = MuSig2Protocol::NonceCommitment {
+    received_handshake = MuSig2Protocol::NonceCommitment( NonceCommitment {
         req: Empty::Alphabet,
         ack: Some(NonceCommit {
             nonce_hash: *b"a long nonce hash to place into.",
         }),
-    };
+    });
 
     // Participant serializes the response:
     let serialized_ack = received_handshake.ack_encode();
