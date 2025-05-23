@@ -63,56 +63,65 @@ handshake_protocol! {
     protocol MuSig2Protocol {
         handshake NonceCommitment {
             req: Empty,                // Coordinator request: no payload
-            ack: NonceCommit,          // Participants response
+            ack: NonceCommit          // Participants response
         }
         handshake NonceReveal {
             req: NonceCommit,                // Coordinator request: NonceCommit
-            ack: Empty,          // Participants response
+            ack: Empty          // Participants response
         }
         protocol ParSigProtocol{ 
             handshake PartialSignatures {
                 req: Empty,                // Coordinator request: NonceReveal
-                ack: PartialSig,           // Participants response
+                ack: PartialSig           // Participants response
             }
         }
         handshake AggregateSignature {
             req: PartialSig,                // Verifier request: PartialSig
-            ack: AggSig,               // Coordinator final aggregated response
+            ack: AggSig               // Coordinator final aggregated response
         }
         handshake Finality {
             req: AggSig,
-            ack: HandshakeFinality,
+            ack: HandshakeFinality
         }
     }
 }
 
+/*
 impl MuSig2Protocol {
     fn new() -> Self {
-        Self::NonceCommitment ( NonceCommitment {
-            req: Default::default(),
-            ack: None,
-        })
+        Self::NonceCommitment (
+            Arc::new(Arc::new(RwLock::new(
+                NonceCommitment {
+                    req: Default::default(),
+                    ack: None,
+                }))
+            )
     }
-    fn init(data: &[u8]) -> Result<Self, Box<dyn std::error::Error>> {
+    fn init(data: &[u8]) -> Result<Self, Arc<RwLock<dyn std::error::Error>>> {
         let empty = Self::new();
         let first_handshake = &Self::list_handshakes()[0];
         Ok(Self::req_decode(first_handshake, data))
     }
     fn finalize(&self) -> Poll<&HandshakeFinality> {
         match self {
-            MuSig2Protocol::Finality ( Finality { ack: Some(ack), .. } ) => Poll::from(ack),
+            MuSig2Protocol::Finality ( finality ) => match finality.get_ack_ref() {
+                Some(ack) => Poll::from(ack),
+                None => Poll::Pending
+            },
             _ => Poll::Pending,
         }
     }
 }
+*/
 
 // Example usage:
 fn main() {
     // Coordinator initiates a handshake requesting nonce commitments:
-    let mut handshake = MuSig2Protocol::NonceCommitment ( NonceCommitment {
-        req: Empty::Lexicon,
-        ack: None, // initially empty
-    });
+    let mut handshake = MuSig2Protocol::NonceCommitment ( Arc::new(RwLock::new(NonceCommitment {
+            req: Empty::Lexicon,
+            ack: None, // initially empty
+        }) )
+    );
 
     // Serialize request (empty payload here, but could have content):
     let serialized_request = handshake.req_encode();
@@ -123,10 +132,11 @@ fn main() {
     let reinitialized = MuSig2Protocol::init(&serialized_request).unwrap();
     println!("Original reinitialized {:?}", reinitialized);
     
-    let handshake_variant = MuSig2Protocol::NonceCommitment ( NonceCommitment {
+    let handshake_variant = MuSig2Protocol::NonceCommitment ( Arc::new(RwLock::new(NonceCommitment {
         req: Empty::Alphabet,
         ack: None, // initially empty
-    });
+    }))
+    );
     println!("Handshake variant : {:?} {:?}", handshake_variant, handshake_variant.req_encode());
 
     // Participant receives the request, deserializes:
@@ -135,19 +145,21 @@ fn main() {
     println!("Initialized Handshake : {:?}", received_handshake);
 
     // Participant generates response:
-    received_handshake = MuSig2Protocol::NonceCommitment ( NonceCommitment {
+    received_handshake = MuSig2Protocol::NonceCommitment ( Arc::new(RwLock::new(NonceCommitment {
         req: Empty::Alphabet,
         ack: Some(NonceCommit {
             nonce_hash: *b"a long nonce hash to place into.",
         }),
-    });
+    }))
+    );
     
-    let aggregate_signature = MuSig2Protocol::AggregateSignature ( AggregateSignature {
+    let aggregate_signature = MuSig2Protocol::AggregateSignature ( Arc::new(RwLock::new(AggregateSignature {
         req: PartialSig::default(),
         ack: Some(AggSig {
             aggregated_sig: *b"a long nonce hash to place into, after some rare events show up.",
         }),        
-    });
+    }))
+    );
     
     println!("Serialized Aggregate Signature Acknowledge : {:?}", aggregate_signature.ack_encode());
 

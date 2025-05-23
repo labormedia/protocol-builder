@@ -1,6 +1,5 @@
-#![feature(trace_macros)]
 mod traits;
-pub mod macros;
+mod macros;
 pub use traits::{
     BigArray,
     RequestBuilder,
@@ -27,3 +26,4 @@ pub const STANDARD_CONFIG: bincode::config::Configuration<LittleEndian, Fixint> 
         .with_little_endian()
         .with_fixed_int_encoding()
         .with_no_limit();
+

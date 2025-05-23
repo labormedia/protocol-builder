@@ -1,6 +1,5 @@
-#![feature(log_syntax)]
 use serde::{ Serialize, Serializer};
-trace_macros!(true);
+
 // A helper to auto-derive serialization/deserialization
 #[macro_export]
 macro_rules! handshake_protocol {
@@ -9,11 +8,21 @@ macro_rules! handshake_protocol {
             $($body:tt)*
         }
     ) => {
+        use std::sync::Arc;
+        use std::sync::RwLock;
+        
+        #[derive(Debug, Serialize, Deserialize, Decode, Encode)]
+        pub enum SchemeVariants
+        {
+            Handshake,
+            Protocol
+        }
+        
         handshake_protocol!(@protocol $protocol_name, [], $($body)*);
     };
 
     // Recursive protocol parsing
-    (@protocol $protocol_name:ident, [$($path:ident)*],
+    (@protocol $protocol_name:ident, [$(($path:ident))*],
         handshake $handshake_name:ident {
             req: $req_ty:ty,
             ack: $ack_ty:ty $(,)?
@@ -26,29 +35,35 @@ macro_rules! handshake_protocol {
             pub req: $req_ty,
             pub ack: Option<$ack_ty>,
         }
-        handshake_protocol!(@protocol $protocol_name, [$($path)* $handshake_name], $($rest)*);
+        
+        impl $handshake_name {
+            fn get_req_ref(&self) -> &$req_ty { &self.req }
+            fn get_ack_ref(&self) -> &Option<$ack_ty> { &self.ack }
+        }
+        
+        handshake_protocol!(@protocol $protocol_name, [$(($path))* ($handshake_name)], $($rest)*);
         
     };
 
     // Handle nested protocol
-    (@protocol $protocol_name:ident, [$($path:ident)*],
+    (@protocol $protocol_name:ident, [$(($path:ident))*],
         protocol $nested_protocol_name:ident {
             $($nested_body:tt)*
         }
         $($rest:tt)*
     ) => {
         // Recurse into nested protocol
-        handshake_protocol!(@protocol $nested_protocol_name, [$($path)*], $($nested_body)*);
-        handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
+        handshake_protocol!(@protocol $nested_protocol_name, [$(($path))* ($nested_protocol_name)], $($nested_body)*);
+        handshake_protocol!(@protocol $protocol_name, [$(($path))*], $($rest)*);
     };
 
     // When body is empty, define protocol enum
-    (@protocol $protocol_name:ident, [$($path:ident)*],) => {
+    (@protocol $protocol_name:ident, [$(($path:ident))*],) => {
         #[derive(Debug, Serialize, Deserialize, Decode)]
         pub enum $protocol_name {
             $(
-                $path($path),
-            )*
+                $path(Arc<RwLock<$path>>)
+            ),*
         }
 
         impl $protocol_name {
@@ -77,10 +92,10 @@ macro_rules! handshake_protocol {
                     $(
                         $path => {
                             let (req, size): (_, usize) = bincode::decode_from_slice(data, STANDARD_CONFIG).unwrap();
-                            $protocol_name::$path( $path {
+                            (RwLock::new($path {
                                 req,
                                 ack: None
-                            })
+                            }))
                         }
                     ),+
                     _ => panic!("Unknown handshake request"),
@@ -92,10 +107,10 @@ macro_rules! handshake_protocol {
             fn req_encode(&self) -> Vec<u8> {
                 match self {
                     $(
-                        $protocol_name::$path( $path { req, .. }) => {
-                            bincode::encode_to_vec(req, STANDARD_CONFIG).unwrap()
-                        }
-                    ),+
+                        $protocol_name::$path( lock ) => {
+                            bincode::encode_to_vec(lock.read().unwrap().get_req_ref(), STANDARD_CONFIG).unwrap()
+                        },
+                    )+
                 }
             }
 
@@ -103,10 +118,11 @@ macro_rules! handshake_protocol {
             fn ack_encode(&self) -> Vec<u8> {
                 match self {
                     $(
-                        $protocol_name::$path($path { ack, .. }) => {
-                            match ack {
-                                Some(acknowledge) => bincode::encode_to_vec(acknowledge, STANDARD_CONFIG).unwrap(),
-                                None => Vec::new(),
+                        $protocol_name::$path( lock ) => {
+                            let path = lock.read().unwrap();
+                            match path.get_ack_ref() {
+                                Some(ack) => bincode::encode_to_vec(ack, STANDARD_CONFIG).unwrap(),
+                                None => Vec::new()
                             }
                         }
                     ),+
@@ -117,12 +133,12 @@ macro_rules! handshake_protocol {
             fn ack_decode(&mut self, data: &[u8]) {
                 match self {
                     $(
-                        $protocol_name::$path($path { ack, .. }) => {
-                            let acknowledge = match bincode::decode_from_slice(data, STANDARD_CONFIG).ok() {
-                                Some((encoded, _)) => Some(encoded),
-                                None => None,
-                            };
-                            *ack = acknowledge;
+                        $protocol_name::$path(lock) => {
+                            let mut path_option = lock.write().unwrap();
+                            
+                            let (decoded, _) = bincode::decode_from_slice(data, STANDARD_CONFIG).unwrap();
+                            
+                            path_option.ack = Some(decoded);
                         }
                     ),+
                 }
@@ -135,8 +151,6 @@ pub fn serialize_array<S, T>(array: &[T], serializer: S) -> Result<S::Ok, S::Err
 where S: Serializer, T: Serialize {
 	array.serialize(serializer)
 }
-
-trace_macros!(false);
 
 #[macro_export]
 macro_rules! serde_array { ($m:ident, $n:expr) => {
