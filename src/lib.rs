@@ -5,6 +5,7 @@ pub use traits::{
     RequestBuilder,
     HandshakeProtocol,
     AsyncExecutor,
+    HandshakeGetter,
 };
 use serde::{Serialize, Deserialize};
 pub use bincode::{

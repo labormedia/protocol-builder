@@ -21,3 +21,10 @@ pub trait HandshakeProtocol {
 pub trait AsyncExecutor: HandshakeProtocol {
     fn exec(&mut self) -> Pin<Box<impl Future<Output = Self> + Send>>;
 }
+
+pub trait HandshakeGetter {
+    type Req;
+    type Ack;
+    fn get_req_ref(&self) -> &Self::Req;
+    fn get_ack_ref(&self) -> &Option<Self::Ack>;
+}

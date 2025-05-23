@@ -22,7 +22,7 @@ macro_rules! handshake_protocol {
     };
 
     // Recursive protocol parsing
-    (@protocol $protocol_name:ident, [$(($path:ident))*],
+    (@protocol $protocol_name:ident, [$($path:ident)*],
         handshake $handshake_name:ident {
             req: $req_ty:ty,
             ack: $ack_ty:ty $(,)?
@@ -36,12 +36,14 @@ macro_rules! handshake_protocol {
             pub ack: Option<$ack_ty>,
         }
         
-        impl $handshake_name {
-            fn get_req_ref(&self) -> &$req_ty { &self.req }
-            fn get_ack_ref(&self) -> &Option<$ack_ty> { &self.ack }
+        impl HandshakeGetter for $handshake_name {
+            type Req = $req_ty;
+            type Ack = $ack_ty;
+            fn get_req_ref(&self) -> &Self::Req { &self.req }
+            fn get_ack_ref(&self) -> &Option<Self::Ack> { &self.ack }
         }
         
-        handshake_protocol!(@protocol $protocol_name, [$(($path))* ($handshake_name)], $($rest)*);
+        handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
         
     };
 
@@ -54,7 +56,7 @@ macro_rules! handshake_protocol {
     ) => {
         // Recurse into nested protocol
         handshake_protocol!(@protocol $nested_protocol_name, [$(($path))* ($nested_protocol_name)], $($nested_body)*);
-        handshake_protocol!(@protocol $protocol_name, [$(($path))*], $($rest)*);
+        handshake_protocol!(@protocol $protocol_name, [$(($path))* ($handshake_name)], $($rest)*);
     };
 
     // When body is empty, define protocol enum
@@ -79,7 +81,7 @@ macro_rules! handshake_protocol {
                 vec![
                     $(
                         stringify!($path).to_string()
-                    ),+
+                    ),*
                 ]       
             }
         }
@@ -90,14 +92,17 @@ macro_rules! handshake_protocol {
             fn req_decode(handshake: &str, data: &[u8]) -> Self {
                 match handshake {
                     $(
-                        $path => {
+                        ($path) => {
                             let (req, size): (_, usize) = bincode::decode_from_slice(data, STANDARD_CONFIG).unwrap();
-                            (RwLock::new($path {
-                                req,
-                                ack: None
-                            }))
+                            $protocol_name::$path( Arc::new(
+                                (RwLock::new($path {
+                                    req,
+                                    ack: None
+                                }))
+                            ))
+
                         }
-                    ),+
+                    ),*
                     _ => panic!("Unknown handshake request"),
                 }
             }
@@ -108,9 +113,11 @@ macro_rules! handshake_protocol {
                 match self {
                     $(
                         $protocol_name::$path( lock ) => {
-                            bincode::encode_to_vec(lock.read().unwrap().get_req_ref(), STANDARD_CONFIG).unwrap()
+                            let lock_clone = lock.clone();
+                            let (path) = lock_clone.read().unwrap();
+                            bincode::encode_to_vec(path.get_req_ref(), STANDARD_CONFIG).unwrap()
                         },
-                    )+
+                    )*
                 }
             }
 
@@ -119,13 +126,14 @@ macro_rules! handshake_protocol {
                 match self {
                     $(
                         $protocol_name::$path( lock ) => {
-                            let path = lock.read().unwrap();
+                            let lock_clone = lock.clone();
+                            let (path) = lock_clone.read().unwrap();
                             match path.get_ack_ref() {
                                 Some(ack) => bincode::encode_to_vec(ack, STANDARD_CONFIG).unwrap(),
                                 None => Vec::new()
                             }
                         }
-                    ),+
+                    ),*
                 }
             }
 
@@ -134,13 +142,14 @@ macro_rules! handshake_protocol {
                 match self {
                     $(
                         $protocol_name::$path(lock) => {
-                            let mut path_option = lock.write().unwrap();
+                            let lock_clone = lock.clone();
+                            let mut path_option = lock_clone.write().unwrap();
                             
                             let (decoded, _) = bincode::decode_from_slice(data, STANDARD_CONFIG).unwrap();
                             
                             path_option.ack = Some(decoded);
                         }
-                    ),+
+                    ),*
                 }
             }
         }

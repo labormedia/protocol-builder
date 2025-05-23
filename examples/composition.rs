@@ -4,6 +4,7 @@ pub use protocol_builder::{
     A64,
     handshake_protocol,
     HandshakeProtocol,
+    HandshakeGetter,
     RequestBuilder,
     Encode,
     Decode,
@@ -129,8 +130,8 @@ fn main() {
     println!("Original deserialized request: {handshake:?}");
     println!("Original serialized request: {serialized_request:?}");
     
-    let reinitialized = MuSig2Protocol::init(&serialized_request).unwrap();
-    println!("Original reinitialized {:?}", reinitialized);
+    //let reinitialized = MuSig2Protocol::init(&serialized_request).unwrap();
+    //println!("Original reinitialized {:?}", reinitialized);
     
     let handshake_variant = MuSig2Protocol::NonceCommitment ( Arc::new(RwLock::new(NonceCommitment {
         req: Empty::Alphabet,
