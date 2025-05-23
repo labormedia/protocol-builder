@@ -18,7 +18,7 @@ pub struct NonceCommit {
 }
 
 #[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
-struct PartialSig {
+pub struct PartialSig {
     #[serde( with = "A64")]
     sig_part: [u8; 64],
 }
@@ -32,7 +32,7 @@ impl Default for PartialSig {
 }
 
 #[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
-struct AggSig {
+pub struct AggSig {
     #[serde( with = "A64")]
     aggregated_sig: [u8; 64],
 }

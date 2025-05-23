@@ -43,24 +43,24 @@ macro_rules! handshake_protocol {
             fn get_ack_ref(&self) -> &Option<Self::Ack> { &self.ack }
         }
         
-        handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
+        handshake_protocol!(@protocol $protocol_name, [$($path)* $handshake_name], $($rest)*);
         
     };
 
     // Handle nested protocol
-    (@protocol $protocol_name:ident, [$(($path:ident))*],
+    (@protocol $protocol_name:ident, [$($path:ident)*],
         protocol $nested_protocol_name:ident {
             $($nested_body:tt)*
         }
         $($rest:tt)*
     ) => {
         // Recurse into nested protocol
-        handshake_protocol!(@protocol $nested_protocol_name, [$(($path))* ($nested_protocol_name)], $($nested_body)*);
-        handshake_protocol!(@protocol $protocol_name, [$(($path))* ($handshake_name)], $($rest)*);
+        handshake_protocol!(@protocol $nested_protocol_name, [$($path)*], $($nested_body)*);
+        handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
     };
 
     // When body is empty, define protocol enum
-    (@protocol $protocol_name:ident, [$(($path:ident))*],) => {
+    (@protocol $protocol_name:ident, [$($path:ident)*],) => {
         #[derive(Debug, Serialize, Deserialize, Decode)]
         pub enum $protocol_name {
             $(
@@ -92,7 +92,7 @@ macro_rules! handshake_protocol {
             fn req_decode(handshake: &str, data: &[u8]) -> Self {
                 match handshake {
                     $(
-                        ($path) => {
+                        $path => {
                             let (req, size): (_, usize) = bincode::decode_from_slice(data, STANDARD_CONFIG).unwrap();
                             $protocol_name::$path( Arc::new(
                                 (RwLock::new($path {
@@ -150,6 +150,7 @@ macro_rules! handshake_protocol {
                             path_option.ack = Some(decoded);
                         }
                     ),*
+                    _ => {}
                 }
             }
         }
