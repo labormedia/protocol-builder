@@ -1,5 +1,4 @@
 use serde::{ Serialize, Serializer};
-
 // A helper to auto-derive serialization/deserialization
 #[macro_export]
 macro_rules! handshake_protocol {
@@ -11,18 +10,11 @@ macro_rules! handshake_protocol {
         use std::sync::Arc;
         use std::sync::RwLock;
         
-        #[derive(Debug, Serialize, Deserialize, Decode, Encode)]
-        pub enum SchemeVariants
-        {
-            Handshake,
-            Protocol
-        }
-        
         handshake_protocol!(@protocol $protocol_name, [], $($body)*);
     };
 
     // Recursive protocol parsing
-    (@protocol $protocol_name:ident, [$($path:ident)*],
+    (@protocol $protocol_name:ident, [$(($scheme_variant:ident $path:ident))*],
         handshake $handshake_name:ident {
             req: $req_ty:ty,
             ack: $ack_ty:ty $(,)?
@@ -43,24 +35,25 @@ macro_rules! handshake_protocol {
             fn get_ack_ref(&self) -> &Option<Self::Ack> { &self.ack }
         }
         
-        handshake_protocol!(@protocol $protocol_name, [$($path)* $handshake_name], $($rest)*);
+        handshake_protocol!(@protocol $protocol_name, [$(($scheme_variant $path))* (Handshake $handshake_name)], $($rest)*);
         
     };
 
     // Handle nested protocol
-    (@protocol $protocol_name:ident, [$($path:ident)*],
+    (@protocol $protocol_name:ident, [$(($protocol_path:ident $path:ident))*],
         protocol $nested_protocol_name:ident {
             $($nested_body:tt)*
         }
         $($rest:tt)*
     ) => {
         // Recurse into nested protocol
-        handshake_protocol!(@protocol $nested_protocol_name, [$($path)*], $($nested_body)*);
-        handshake_protocol!(@protocol $protocol_name, [$($path)*], $($rest)*);
+        handshake_protocol!(@protocol $nested_protocol_name, [$(($protocol_path $path))*], $($nested_body)*);
+        handshake_protocol!(@protocol $protocol_name, [$(($protocol_path $path))*], $($rest)*);
     };
 
     // When body is empty, define protocol enum
-    (@protocol $protocol_name:ident, [$($path:ident)*],) => {
+    (@protocol $protocol_name:ident, [$(($scheme_variant:ident $path:ident))*],) => {
+        
         #[derive(Debug, Serialize, Deserialize, Decode)]
         pub enum $protocol_name {
             $(
@@ -77,10 +70,10 @@ macro_rules! handshake_protocol {
                     ),+
                 ]       
             }*/
-            fn list_handshakes() -> Vec<String> {
+            fn list_handshakes() -> Vec<(String, String)> {
                 vec![
                     $(
-                        stringify!($path).to_string()
+                        (stringify!($scheme_variant).to_string(), stringify!($path).to_string())
                     ),*
                 ]       
             }
@@ -141,7 +134,7 @@ macro_rules! handshake_protocol {
             fn ack_decode(&mut self, data: &[u8]) {
                 match self {
                     $(
-                        $protocol_name::$path(lock) => {
+                        $protocol_name::$path( lock ) => {
                             let lock_clone = lock.clone();
                             let mut path_option = lock_clone.write().unwrap();
                             

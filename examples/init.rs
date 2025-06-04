@@ -10,6 +10,7 @@ pub use protocol_builder::{
     HandshakeProtocol,
     RequestBuilder,
     STANDARD_CONFIG,
+    HandshakeGetter,
 };
 
 // Example message types (must implement Serialize/Deserialize + Default)
@@ -19,7 +20,7 @@ pub struct NonceCommit {
 }
 
 #[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
-struct PartialSig {
+pub struct PartialSig {
     #[serde( with = "A64")]
     sig_part: [u8; 64],
 }
@@ -33,7 +34,7 @@ impl Default for PartialSig {
 }
 
 #[derive(Clone, Serialize, Deserialize, Encode, Decode, Debug)]
-struct AggSig {
+pub struct AggSig {
     #[serde( with = "A64")]
     aggregated_sig: [u8; 64],
 }
@@ -78,10 +79,10 @@ handshake_protocol! {
 // Example usage:
 fn main() {
     // Coordinator initiates a handshake requesting nonce commitments:
-    let handshake = MuSig2Protocol::NonceCommitment( NonceCommitment {
+    let handshake = MuSig2Protocol::NonceCommitment( Arc::new( RwLock::new( NonceCommitment {
         req: Empty::Lexicon,
         ack: Default::default(), // initially empty
-    });
+    })));
 
     // Serialize request (empty payload here, but could have content):
     let serialized_request = handshake.req_encode();
@@ -90,12 +91,12 @@ fn main() {
     let mut received_handshake = MuSig2Protocol::req_decode("NonceCommitment", &serialized_request);
 
     // Participant generates response:
-    received_handshake = MuSig2Protocol::NonceCommitment( NonceCommitment {
+    received_handshake = MuSig2Protocol::NonceCommitment( Arc::new( RwLock::new( NonceCommitment {
         req: Empty::Alphabet,
         ack: Some(NonceCommit {
             nonce_hash: *b"a long nonce hash to place into.",
         }),
-    });
+    })));
 
     // Participant serializes the response:
     let serialized_ack = received_handshake.ack_encode();
