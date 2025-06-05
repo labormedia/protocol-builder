@@ -1,4 +1,5 @@
 use serde::{ Serialize, Serializer};
+
 // A helper to auto-derive serialization/deserialization
 #[macro_export]
 macro_rules! handshake_protocol {
@@ -9,6 +10,11 @@ macro_rules! handshake_protocol {
     ) => {
         use std::sync::Arc;
         use std::sync::RwLock;
+        
+        pub enum SchemeVariant {
+            Handshake,
+            Protocol,
+        }
         
         handshake_protocol!(@protocol $protocol_name, [], $($body)*);
     };
@@ -40,15 +46,15 @@ macro_rules! handshake_protocol {
     };
 
     // Handle nested protocol
-    (@protocol $protocol_name:ident, [$(($protocol_path:ident $path:ident))*],
+    (@protocol $protocol_name:ident, [$(($scheme_variant:ident $path:ident))*],
         protocol $nested_protocol_name:ident {
             $($nested_body:tt)*
         }
         $($rest:tt)*
     ) => {
         // Recurse into nested protocol
-        handshake_protocol!(@protocol $nested_protocol_name, [$(($protocol_path $path))*], $($nested_body)*);
-        handshake_protocol!(@protocol $protocol_name, [$(($protocol_path $path))*], $($rest)*);
+        handshake_protocol!(@protocol $nested_protocol_name, [$(($scheme_variant $path))*], $($nested_body)*);
+        handshake_protocol!(@protocol $protocol_name, [$(($scheme_variant $path))*], $($rest)*);
     };
 
     // When body is empty, define protocol enum
